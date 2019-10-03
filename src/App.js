@@ -9,37 +9,23 @@ class App extends React.Component{
     state = {
         data: [],
         isLoading: true,
-        btnText: 'Start Auto Refresh',
-        numComments: 40
+        refreshBtn: false,
+        minComments: 40
     };
 
-    //Function for fetch Data from API, sort Data, setState with loaded data
+    //Function for fetch Data from API
     fetchData = async() => {
-        let data = await fetch('https://www.reddit.com/r/reactjs.json?limit=100');
-        let json;
-        if(data.ok){
-            json = await data.json()
-        }else{
-            console.log('Error Http: ', data.status)
+        try{
+            let data = await fetch('https://www.reddit.com/r/reactjs.json?limit=100');
+            let json;
+            json = await data.json();
+            this.setState({
+                data: json.data.children,
+                isLoading: false
+            })
+        }catch (e) {
+            console.log('Error: ', e)
         }
-
-        let dataByComments = [];
-        json.data.children.map(item => {
-            if(item.data.num_comments >= this.state.numComments){
-                dataByComments.push(item);
-            }
-            return dataByComments;
-        });
-
-        let sortData = dataByComments;
-        sortData.sort(function (a,b) {
-            return b.data.num_comments - a.data.num_comments
-        });
-
-        this.setState({
-            data: sortData,
-            isLoading: false
-        })
     };
 
     //Fetch data
@@ -47,47 +33,47 @@ class App extends React.Component{
         this.fetchData()
     }
 
-    //Render app after state.numComments changed
-    componentDidUpdate(prevProps, prevState) {
-        if(this.state.numComments !== prevState.numComments){
-            this.fetchData()
-        }
-    }
     //Set interval for refresh data by clicking Refresh btn and Stop refresh by toggle
-    intervalId = null;
+    autoRefresh = null;
     refreshData = () => {
-        if(this.state.btnText === 'Start Auto Refresh'){
-            this.setState({
-                btnText: 'Stop'
-            });
-            this.intervalId = setInterval(async() => {
-                console.log(1)
-                this.fetchData();
-            }, 3000)
+        if(this.state.refreshBtn){
+            clearInterval(this.autoRefresh);
+            this.setState({ refreshBtn: false })
         }else{
-            this.setState({
-                btnText: 'Start Auto Refresh'
-            });
-            clearInterval(this.intervalId);
+            this.autoRefresh = setInterval(this.fetchData, 3000);
+            this.setState({ refreshBtn: true })
         }
     };
 
-    handleRangeBar = (numComments) => {
-        this.setState({ numComments })
+    handleRangeBar = (minComments) => {
+        this.setState({ minComments })
+    };
+
+    getDataByComments = (data, minComments) => {
+        return data
+            .sort((a,b) => b.data.num_comments - a.data.num_comments)
+            .filter(item => item.data.num_comments >= minComments);
     };
 
     render(){
-        const {data, isLoading} = this.state;
-        if(isLoading){
-            return <div>Loading...</div>
-        }
+        const {data, isLoading, refreshBtn, minComments} = this.state;
+        const sortDataByComments = this.getDataByComments(data, minComments);
         return (
             <div className="wrap">
                 <Header/>
-                <RefreshButton refreshData={this.refreshData} btnText={this.state.btnText}/>
-                <RangeBar handleRangeBar={this.handleRangeBar} numComments={this.state.numComments}/>
-                <Gallery data={data}/>
-                {data.length === 0 && <h4>No results found your criteria</h4>}
+                {isLoading ?
+                    <div>Loading...</div>
+                    :
+                    <React.Fragment>
+                        <RefreshButton refreshData={this.refreshData} refreshBtn={refreshBtn}/>
+                        <RangeBar handleRangeBar={this.handleRangeBar} minComments={minComments}/>
+                        {sortDataByComments.length > 0
+                            ?
+                            <Gallery data={sortDataByComments}/>
+                            :
+                            <h4>No results found your criteria</h4>}
+                    </React.Fragment>
+                }
             </div>
         );
     }

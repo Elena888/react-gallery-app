@@ -1,13 +1,14 @@
-import React from 'react';
+import React, {memo} from 'react';
 import noImage from '../no-image.jpg'
 
-const GalleryItem = (props) => {
+const GalleryItem = memo((props) => {
     let url = props.item.data.thumbnail === 'self' || props.item.data.thumbnail ==='default'
         ? noImage
         : props.item.data.thumbnail;
 
     let permalink = `https://www.reddit.com/${props.item.data.permalink}`;
 
+    console.log('render')
     return(
         <div className="gallery-item">
             <div className="image" style={{backgroundImage: `url(${url})`}}/>
@@ -16,6 +17,6 @@ const GalleryItem = (props) => {
             <a href={permalink} target="_blank" rel="noopener noreferrer">Link</a>
         </div>
     )
-};
+});
 
 export default GalleryItem;
